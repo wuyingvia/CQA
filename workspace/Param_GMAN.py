@@ -1,4 +1,4 @@
-BATCHSIZE = 32
+BATCHSIZE = 2
 SE_DIM = 64 # GMAN spatial embedding(adjacent matrix embedding) dim
 TE_DIM = 2
-SEPATH = '../METRLA/SE_metrla.txt'
+# SEPATH = '../PEMSD7M/SE_pemsd7m.txt'

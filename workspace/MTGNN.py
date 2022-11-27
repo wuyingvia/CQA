@@ -228,6 +228,7 @@ class gtnet(nn.Module):
 
         self.idx = torch.arange(self.num_nodes).to(device)
 
+        self.linear = nn.Linear(in_features=1, out_features=2)
 
     def forward(self, input, idx=None):
         seq_len = input.size(3)
@@ -273,7 +274,13 @@ class gtnet(nn.Module):
         x = F.relu(skip)
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
-        return x
+
+        # output multi-output # [batch, seq, node, 1] -> [batch, seq, node, 1, len(quantiles_list)]
+        out = torch.unsqueeze(x,0).view([-1,1])
+        out = self.linear(out)
+        out = out.view([-1, x.size(1), x.size(2), x.size(3),2])
+        return out
+
 
 
 def main():

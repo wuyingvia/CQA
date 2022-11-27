@@ -10,7 +10,7 @@ from datetime import datetime
 import Metrics
 from Param import *
 from Param_HistoricalAverage import *
-
+torch.set_num_threads(1)
 def getXSYS(data, mode):
     TRAIN_NUM = int(data.shape[0] * TRAINRATIO)
     XS, YS = [], []
@@ -80,7 +80,7 @@ MODELNAME = 'HistoricalAverage'
 KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + datetime.now().strftime("%y%m%d%H%M")
 PATH = '../save/' + KEYWORD
 ################# Parameter Setting #######################
-data = pd.read_hdf(FLOWPATH).values
+data = pd.read_csv(FLOWPATH,index_col=[0]).values
 print('data.shape', data.shape)
 ###########################################################
 

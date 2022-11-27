@@ -1,12 +1,11 @@
 import torch
 from torch import nn
-
 import sys
 import numpy as np
 import scipy.sparse as sp
 from torchsummary import summary
 from Utils import load_pickle
-
+import pandas as pd
 
 class GCN(nn.Module):
     def __init__(self, K: int, input_dim: int, hidden_dim: int, bias=True, activation=nn.ReLU):
@@ -307,7 +306,10 @@ def calculate_scaled_laplacian(adj_mx, lambda_max=2, undirected=True):
 
 
 def load_adj(pkl_filename, adjtype):
-    sensor_ids, sensor_id_to_ind, adj_mx = load_pickle(pkl_filename)
+    adj_mx = pd.read_csv(pkl_filename).values
+    distances = adj_mx[~np.isinf(adj_mx)].flatten()
+    std = distances.std()
+    adj_mx = np.exp(-np.square(adj_mx / std))
     if adjtype == "scalap":
         adj = [calculate_scaled_laplacian(adj_mx)]
     elif adjtype == "normlap":
@@ -326,8 +328,8 @@ def load_adj(pkl_filename, adjtype):
     return adj
 
 def main():
-    from Param import CHANNEL, N_NODE, TIMESTEP_IN, TIMESTEP_OUT
-    from Param_DCRNN import ADJPATH, ADJTYPE
+    from Param import ADJPATH,CHANNEL, N_NODE, TIMESTEP_IN, TIMESTEP_OUT
+    from Param_DCRNN import ADJTYPE
     GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
     device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
     adj_mx = load_adj(ADJPATH, ADJTYPE)

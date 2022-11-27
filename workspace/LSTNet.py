@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
-from torchsummary import summary
-
+# from torchsummary import summary
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 class LSTNet(nn.Module):
     def __init__(self, data_m, window=24*7, hidRNN=100, hidCNN=100, hidSkip=5, CNN_kernel=6, skip=24, highway_window=24, dropout=0.2, output_fun=None):
@@ -27,6 +28,7 @@ class LSTNet(nn.Module):
         else:
             self.linear1 = nn.Linear(self.hidR, self.m)
         # self.linear2 = nn.Linear(self.m, self.horizon * self.m)
+        self.linear = nn.Linear(in_features=1, out_features= 2)
 
         if (self.hw > 0):
             self.highway = nn.Linear(self.hw, 1)
@@ -76,7 +78,13 @@ class LSTNet(nn.Module):
         # res = self.linear2(res).view(-1, self.horizon, self.m)
         if (self.output):
             res = self.output(res)
-        return res
+        # return res
+        # multiple output
+        # [batch, node] -> [batch, node, 2]
+        out = res.view([-1,1])
+        out = self.linear(out)
+        out = out.view([-1,res.size(1),2])
+        return out
 
 
 def main():
@@ -91,7 +99,7 @@ def main():
                  CNN_kernel=3,
                  skip=3,
                  highway_window=24).to(device)
-    summary(model, (TIMESTEP_IN, N_NODE * CHANNEL), device=device)
+    #summary(model, (TIMESTEP_IN, N_NODE * CHANNEL), device=device)
 
 if __name__ == '__main__':
     main()

@@ -25,7 +25,7 @@ class conv2d_(nn.Module):
 
         if use_bias:
             torch.nn.init.zeros_(self.conv.bias)
-    
+
     def forward(self, x):
         x = x.permute(0, 3, 2, 1)
         x = F.pad(x, ([self.padding_size[1], self.padding_size[1], self.padding_size[0], self.padding_size[0]]))
@@ -342,7 +342,8 @@ class GMAN(nn.Module):
                        bn_decay=bn_decay)
         self.FC_2 = FC(input_dims=[D, D], units=[D, 1], activations=[F.relu, None],
                        bn_decay=bn_decay)
-        
+        self.linear = nn.Linear(in_features=1, out_features= 2)
+
     def forward(self, X, TE):
 
         # input
@@ -360,10 +361,18 @@ class GMAN(nn.Module):
         # decoder
         for net in self.STAttBlock_2:
             X = net(X, STE_pred)
-        # output
+        # output [batch,sequence, node, 1]
         X = self.FC_2(X)
+
+        # multiple output
+        # output [batch,sequence, node, 2]
+        out = X.reshape([-1, 1])
+        out = self.linear(out)
+        out = out.view([-1, X.size(1), X.size(2), X.size(3), 2])
+        out = torch.squeeze((out))
         del STE, STE_his, STE_pred
-        return torch.squeeze(X, 3)
+        #return torch.squeeze(X, 3)
+        return out
 
 
 def main():

@@ -7,18 +7,18 @@ from Param import *
 from Param_GMAN import *
 
 # parameters(generate spatial embedding).
-IS_DIRECTED = True
+IS_DIRECTED = False
 P = 2
 Q = 1
 NUM_WALKS = 100
 WALK_LENGTH = 80
 WINDOW_SIZE = 10
 ITER = 1000
-SENSOR_IDS_PATH='../METRLA/metr_ids.txt'
-DISTANCE_PATH='../METRLA/distances_la_2012.csv'
-ADJPATH = '../METRLA/adj_metrla_tmp.txt' # intermediate result for generating graph with networkx as nx
+# SENSOR_IDS_PATH='../METRLA/metr_ids.txt'
+# DISTANCE_PATH='../METRLA/distances_la_2012.csv'
+ADJPATH_TEMP = '../PEMSD7M/adj_pemsd7m_tmp.txt' # intermediate result for generating graph with networkx as nx
 
-def get_adjacency_matrix(distance_df, sensor_ids, normalized_k=0.1):
+def get_adjacency_matrix(ADJPATH, normalized_k=0):
     """
     :param distance_df: data frame with three columns: [from, to, distance].
     :param sensor_ids: list of sensor ids.
@@ -26,20 +26,20 @@ def get_adjacency_matrix(distance_df, sensor_ids, normalized_k=0.1):
     :return: 
     """
 
-    num_sensors = len(sensor_ids)
-    dist_mx = np.zeros((num_sensors, num_sensors), dtype=np.float32)
-    dist_mx[:] = np.inf
-    # Builds sensor id to index map.
-    sensor_id_to_ind = {}
-    for i, sensor_id in enumerate(sensor_ids):
-        sensor_id_to_ind[sensor_id] = i
+#     num_sensors = len(sensor_ids)
+#     dist_mx = np.zeros((num_sensors, num_sensors), dtype=np.float32)
+#     dist_mx[:] = np.inf
+#     # Builds sensor id to index map.
+#     sensor_id_to_ind = {}
+#     for i, sensor_id in enumerate(sensor_ids):
+#         sensor_id_to_ind[sensor_id] = i
     
-    # Fills cells in the matrix with distances.
-    for row in distance_df.values:
-        if row[0] not in sensor_id_to_ind or row[1] not in sensor_id_to_ind:
-            continue
-        dist_mx[sensor_id_to_ind[row[0]], sensor_id_to_ind[row[1]]] = row[2]
-
+#     # Fills cells in the matrix with distances.
+#     for row in distance_df.values:
+#         if row[0] not in sensor_id_to_ind or row[1] not in sensor_id_to_ind:
+#             continue
+#         dist_mx[sensor_id_to_ind[row[0]], sensor_id_to_ind[row[1]]] = row[2]
+    dist_mx = pd.read_csv(ADJPATH).values
     # Calculates the standard deviation as theta.
     distances = dist_mx[~np.isinf(dist_mx)].flatten()
     std = distances.std()
@@ -49,14 +49,14 @@ def get_adjacency_matrix(distance_df, sensor_ids, normalized_k=0.1):
     adj_mx[adj_mx < normalized_k] = 0
     return adj_mx
 
-def gen_matrix(sensor_ids_filename=SENSOR_IDS_PATH, 
-    distances_filename=DISTANCE_PATH, 
-    normalized_k=0.1):
-    with open(sensor_ids_filename) as f:
-        sensor_ids = f.read().strip().split(',')
-    distance_df = pd.read_csv(distances_filename, dtype={'from': 'str', 'to': 'str'})
-    adj_mx = get_adjacency_matrix(distance_df, sensor_ids, normalized_k)
-    return adj_mx
+# def gen_matrix(sensor_ids_filename=SENSOR_IDS_PATH, 
+#     distances_filename=DISTANCE_PATH, 
+#     normalized_k=0.1):
+#     with open(sensor_ids_filename) as f:
+#         sensor_ids = f.read().strip().split(',')
+#     distance_df = pd.read_csv(distances_filename, dtype={'from': 'str', 'to': 'str'})
+#     adj_mx = get_adjacency_matrix(distance_df, sensor_ids, normalized_k)
+#     return adj_mx
 
 def gen_adjlist(matrix):
     adj_list = []
@@ -64,7 +64,8 @@ def gen_adjlist(matrix):
         for j in range(N_NODE):
             row = [int(i), int(j), adj_mx[i][j]]
             adj_list.append(row)
-    np.savetxt(ADJPATH, adj_list, fmt='%d %d %f')
+    np.savetxt(ADJPATH_TEMP, adj_list, fmt='%d %d %f')
+
 
 def read_graph(edgelist):
     G = nx.read_edgelist(
@@ -77,7 +78,7 @@ def learn_embeddings(walks, dimensions, output_file):
     walks = [list(map(str, walk)) for walk in walks]
     model = Word2Vec(
         walks, size = dimensions, window = 10, min_count=0, sg=1,
-        workers = 8, iter = ITER)
+        workers = 50, iter = ITER)
     model.wv.save_word2vec_format(output_file)
 	
     return
@@ -85,9 +86,9 @@ def learn_embeddings(walks, dimensions, output_file):
 
 
 
-adj_mx = gen_matrix() 
+adj_mx = get_adjacency_matrix(ADJPATH) 
 adj_list = gen_adjlist(adj_mx)   
-nx_G = read_graph(ADJPATH)
+nx_G = read_graph(ADJPATH_TEMP)
 G = node2vec.Graph(nx_G, IS_DIRECTED, P, Q)
 G.preprocess_transition_probs()
 walks = G.simulate_walks(NUM_WALKS, WALK_LENGTH)

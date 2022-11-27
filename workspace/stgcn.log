@@ -1,0 +1,513 @@
+nohup: ignoring input
+data.shape (52116, 325)
+pred_PEMS-BAY_STGCN12_quantile_conformal_2209281013 cal started Wed Sep 28 10:14:00 2022
+TRAIN XS.shape YS,shape (15623, 1, 12, 325) (15623, 1, 12, 325)
+model fixed calibration state:
+TIMESTEP_IN, TIMESTEP_OUT 12 12
+MODEL CALIBRATION STATE:
+TIMESTEP_IN, TIMESTEP_OUT 12 12
+YS.shape, YS_pred.shape, (15623, 1, 1, 325) (15623, 1, 1, 325)
+pred_PEMS-BAY_STGCN12_quantile_conformal_2209281013 testing started Wed Sep 28 10:14:15 2022
+TEST XS.shape, YS.shape (10413, 1, 12, 325) (10413, 1, 1, 325)
+model uncertainty test
+timestep_in, timestep_out 12 12
+****************************************
+Calibration error, 0.0000
+
+Mean independent coverage, Mean confidence interval widths, 0.7590, 5.7092
+ 
+****************************************
+Calibration error, 0.0490
+
+Mean independent coverage, Mean confidence interval widths, 0.7639, 5.7581
+ 
+****************************************
+Calibration error, 0.0983
+
+Mean independent coverage, Mean confidence interval widths, 0.7685, 5.8074
+ 
+****************************************
+Calibration error, 0.1473
+
+Mean independent coverage, Mean confidence interval widths, 0.7731, 5.8563
+ 
+****************************************
+Calibration error, 0.1963
+
+Mean independent coverage, Mean confidence interval widths, 0.7776, 5.9053
+ 
+****************************************
+Calibration error, 0.2450
+
+Mean independent coverage, Mean confidence interval widths, 0.7818, 5.9539
+ 
+****************************************
+Calibration error, 0.2934
+
+Mean independent coverage, Mean confidence interval widths, 0.7860, 6.0023
+ 
+****************************************
+Calibration error, 0.3424
+
+Mean independent coverage, Mean confidence interval widths, 0.7901, 6.0513
+ 
+****************************************
+Calibration error, 0.3911
+
+Mean independent coverage, Mean confidence interval widths, 0.7940, 6.1000
+ 
+****************************************
+Calibration error, 0.4399
+
+Mean independent coverage, Mean confidence interval widths, 0.7978, 6.1488
+ 
+****************************************
+Calibration error, 0.4883
+
+Mean independent coverage, Mean confidence interval widths, 0.8015, 6.1972
+ 
+****************************************
+Calibration error, 0.5365
+
+Mean independent coverage, Mean confidence interval widths, 0.8051, 6.2453
+ 
+****************************************
+Calibration error, 0.5845
+
+Mean independent coverage, Mean confidence interval widths, 0.8085, 6.2933
+ 
+****************************************
+Calibration error, 0.6321
+
+Mean independent coverage, Mean confidence interval widths, 0.8119, 6.3409
+ 
+****************************************
+Calibration error, 0.6793
+
+Mean independent coverage, Mean confidence interval widths, 0.8152, 6.3881
+ 
+****************************************
+Calibration error, 0.7262
+
+Mean independent coverage, Mean confidence interval widths, 0.8183, 6.4350
+ 
+****************************************
+Calibration error, 0.7735
+
+Mean independent coverage, Mean confidence interval widths, 0.8214, 6.4823
+ 
+****************************************
+Calibration error, 0.8198
+
+Mean independent coverage, Mean confidence interval widths, 0.8244, 6.5286
+ 
+****************************************
+Calibration error, 0.8664
+
+Mean independent coverage, Mean confidence interval widths, 0.8273, 6.5751
+ 
+****************************************
+Calibration error, 0.9127
+
+Mean independent coverage, Mean confidence interval widths, 0.8302, 6.6215
+ 
+****************************************
+Calibration error, 0.9589
+
+Mean independent coverage, Mean confidence interval widths, 0.8329, 6.6677
+ 
+****************************************
+Calibration error, 1.0044
+
+Mean independent coverage, Mean confidence interval widths, 0.8354, 6.7132
+ 
+****************************************
+Calibration error, 1.0500
+
+Mean independent coverage, Mean confidence interval widths, 0.8380, 6.7587
+ 
+****************************************
+Calibration error, 1.0954
+
+Mean independent coverage, Mean confidence interval widths, 0.8405, 6.8041
+ 
+****************************************
+Calibration error, 1.1410
+
+Mean independent coverage, Mean confidence interval widths, 0.8430, 6.8497
+ 
+****************************************
+Calibration error, 1.1858
+
+Mean independent coverage, Mean confidence interval widths, 0.8453, 6.8945
+ 
+****************************************
+Calibration error, 1.2304
+
+Mean independent coverage, Mean confidence interval widths, 0.8476, 6.9391
+ 
+****************************************
+Calibration error, 1.2753
+
+Mean independent coverage, Mean confidence interval widths, 0.8499, 6.9840
+ 
+****************************************
+Calibration error, 1.3199
+
+Mean independent coverage, Mean confidence interval widths, 0.8520, 7.0287
+ 
+****************************************
+Calibration error, 1.3643
+
+Mean independent coverage, Mean confidence interval widths, 0.8542, 7.0730
+ 
+****************************************
+Calibration error, 1.4091
+
+Mean independent coverage, Mean confidence interval widths, 0.8562, 7.1178
+ 
+****************************************
+Calibration error, 1.4531
+
+Mean independent coverage, Mean confidence interval widths, 0.8583, 7.1619
+ 
+****************************************
+Calibration error, 1.4971
+
+Mean independent coverage, Mean confidence interval widths, 0.8602, 7.2059
+ 
+****************************************
+Calibration error, 1.5411
+
+Mean independent coverage, Mean confidence interval widths, 0.8621, 7.2498
+ 
+****************************************
+Calibration error, 1.5853
+
+Mean independent coverage, Mean confidence interval widths, 0.8640, 7.2940
+ 
+****************************************
+Calibration error, 1.6290
+
+Mean independent coverage, Mean confidence interval widths, 0.8659, 7.3377
+ 
+****************************************
+Calibration error, 1.6725
+
+Mean independent coverage, Mean confidence interval widths, 0.8676, 7.3812
+ 
+****************************************
+Calibration error, 1.7163
+
+Mean independent coverage, Mean confidence interval widths, 0.8694, 7.4250
+ 
+****************************************
+Calibration error, 1.7597
+
+Mean independent coverage, Mean confidence interval widths, 0.8710, 7.4684
+ 
+****************************************
+Calibration error, 1.8030
+
+Mean independent coverage, Mean confidence interval widths, 0.8727, 7.5117
+ 
+****************************************
+Calibration error, 1.8464
+
+Mean independent coverage, Mean confidence interval widths, 0.8743, 7.5551
+ 
+****************************************
+Calibration error, 1.8895
+
+Mean independent coverage, Mean confidence interval widths, 0.8759, 7.5982
+ 
+****************************************
+Calibration error, 1.9331
+
+Mean independent coverage, Mean confidence interval widths, 0.8774, 7.6418
+ 
+****************************************
+Calibration error, 1.9767
+
+Mean independent coverage, Mean confidence interval widths, 0.8790, 7.6854
+ 
+****************************************
+Calibration error, 2.0199
+
+Mean independent coverage, Mean confidence interval widths, 0.8805, 7.7287
+ 
+****************************************
+Calibration error, 2.0637
+
+Mean independent coverage, Mean confidence interval widths, 0.8819, 7.7724
+ 
+****************************************
+Calibration error, 2.1074
+
+Mean independent coverage, Mean confidence interval widths, 0.8833, 7.8161
+ 
+****************************************
+Calibration error, 2.1518
+
+Mean independent coverage, Mean confidence interval widths, 0.8847, 7.8605
+ 
+****************************************
+Calibration error, 2.1963
+
+Mean independent coverage, Mean confidence interval widths, 0.8861, 7.9050
+ 
+****************************************
+Calibration error, 2.2407
+
+Mean independent coverage, Mean confidence interval widths, 0.8875, 7.9494
+ 
+****************************************
+Calibration error, 2.2856
+
+Mean independent coverage, Mean confidence interval widths, 0.8888, 7.9943
+ 
+****************************************
+Calibration error, 2.3317
+
+Mean independent coverage, Mean confidence interval widths, 0.8902, 8.0404
+ 
+****************************************
+Calibration error, 2.3777
+
+Mean independent coverage, Mean confidence interval widths, 0.8915, 8.0864
+ 
+****************************************
+Calibration error, 2.4244
+
+Mean independent coverage, Mean confidence interval widths, 0.8928, 8.1331
+ 
+****************************************
+Calibration error, 2.4720
+
+Mean independent coverage, Mean confidence interval widths, 0.8941, 8.1808
+ 
+****************************************
+Calibration error, 2.5202
+
+Mean independent coverage, Mean confidence interval widths, 0.8953, 8.2289
+ 
+****************************************
+Calibration error, 2.5691
+
+Mean independent coverage, Mean confidence interval widths, 0.8966, 8.2778
+ 
+****************************************
+Calibration error, 2.6190
+
+Mean independent coverage, Mean confidence interval widths, 0.8979, 8.3277
+ 
+****************************************
+Calibration error, 2.6697
+
+Mean independent coverage, Mean confidence interval widths, 0.8991, 8.3784
+ 
+****************************************
+Calibration error, 2.7213
+
+Mean independent coverage, Mean confidence interval widths, 0.9004, 8.4300
+ 
+****************************************
+Calibration error, 2.7748
+
+Mean independent coverage, Mean confidence interval widths, 0.9017, 8.4835
+ 
+****************************************
+Calibration error, 2.8295
+
+Mean independent coverage, Mean confidence interval widths, 0.9030, 8.5382
+ 
+****************************************
+Calibration error, 2.8858
+
+Mean independent coverage, Mean confidence interval widths, 0.9042, 8.5945
+ 
+****************************************
+Calibration error, 2.9432
+
+Mean independent coverage, Mean confidence interval widths, 0.9055, 8.6519
+ 
+****************************************
+Calibration error, 3.0032
+
+Mean independent coverage, Mean confidence interval widths, 0.9068, 8.7119
+ 
+****************************************
+Calibration error, 3.0651
+
+Mean independent coverage, Mean confidence interval widths, 0.9081, 8.7738
+ 
+****************************************
+Calibration error, 3.1298
+
+Mean independent coverage, Mean confidence interval widths, 0.9095, 8.8385
+ 
+****************************************
+Calibration error, 3.1964
+
+Mean independent coverage, Mean confidence interval widths, 0.9108, 8.9052
+ 
+****************************************
+Calibration error, 3.2654
+
+Mean independent coverage, Mean confidence interval widths, 0.9121, 8.9742
+ 
+****************************************
+Calibration error, 3.3377
+
+Mean independent coverage, Mean confidence interval widths, 0.9135, 9.0464
+ 
+****************************************
+Calibration error, 3.4129
+
+Mean independent coverage, Mean confidence interval widths, 0.9148, 9.1216
+ 
+****************************************
+Calibration error, 3.4919
+
+Mean independent coverage, Mean confidence interval widths, 0.9162, 9.2006
+ 
+****************************************
+Calibration error, 3.5758
+
+Mean independent coverage, Mean confidence interval widths, 0.9176, 9.2845
+ 
+****************************************
+Calibration error, 3.6627
+
+Mean independent coverage, Mean confidence interval widths, 0.9190, 9.3714
+ 
+****************************************
+Calibration error, 3.7549
+
+Mean independent coverage, Mean confidence interval widths, 0.9204, 9.4636
+ 
+****************************************
+Calibration error, 3.8503
+
+Mean independent coverage, Mean confidence interval widths, 0.9219, 9.5590
+ 
+****************************************
+Calibration error, 3.9505
+
+Mean independent coverage, Mean confidence interval widths, 0.9233, 9.6592
+ 
+****************************************
+Calibration error, 4.0556
+
+Mean independent coverage, Mean confidence interval widths, 0.9248, 9.7643
+ 
+****************************************
+Calibration error, 4.1646
+
+Mean independent coverage, Mean confidence interval widths, 0.9263, 9.8734
+ 
+****************************************
+Calibration error, 4.2803
+
+Mean independent coverage, Mean confidence interval widths, 0.9278, 9.9890
+ 
+****************************************
+Calibration error, 4.4037
+
+Mean independent coverage, Mean confidence interval widths, 0.9293, 10.1124
+ 
+****************************************
+Calibration error, 4.5342
+
+Mean independent coverage, Mean confidence interval widths, 0.9308, 10.2429
+ 
+****************************************
+Calibration error, 4.6748
+
+Mean independent coverage, Mean confidence interval widths, 0.9324, 10.3835
+ 
+****************************************
+Calibration error, 4.8273
+
+Mean independent coverage, Mean confidence interval widths, 0.9340, 10.5360
+ 
+****************************************
+Calibration error, 4.9959
+
+Mean independent coverage, Mean confidence interval widths, 0.9357, 10.7046
+ 
+****************************************
+Calibration error, 5.1827
+
+Mean independent coverage, Mean confidence interval widths, 0.9375, 10.8914
+ 
+****************************************
+Calibration error, 5.3926
+
+Mean independent coverage, Mean confidence interval widths, 0.9394, 11.1013
+ 
+****************************************
+Calibration error, 5.6300
+
+Mean independent coverage, Mean confidence interval widths, 0.9414, 11.3387
+ 
+****************************************
+Calibration error, 5.9078
+
+Mean independent coverage, Mean confidence interval widths, 0.9435, 11.6165
+ 
+****************************************
+Calibration error, 6.2378
+
+Mean independent coverage, Mean confidence interval widths, 0.9459, 11.9465
+ 
+****************************************
+Calibration error, 6.6493
+
+Mean independent coverage, Mean confidence interval widths, 0.9486, 12.3580
+ 
+****************************************
+Calibration error, 7.1752
+
+Mean independent coverage, Mean confidence interval widths, 0.9516, 12.8839
+ 
+****************************************
+Calibration error, 7.8628
+
+Mean independent coverage, Mean confidence interval widths, 0.9550, 13.5715
+ 
+****************************************
+Calibration error, 8.7851
+
+Mean independent coverage, Mean confidence interval widths, 0.9590, 14.4938
+ 
+****************************************
+Calibration error, 10.0153
+
+Mean independent coverage, Mean confidence interval widths, 0.9633, 15.7240
+ 
+****************************************
+Calibration error, 11.6411
+
+Mean independent coverage, Mean confidence interval widths, 0.9678, 17.3497
+ 
+****************************************
+Calibration error, 13.7139
+
+Mean independent coverage, Mean confidence interval widths, 0.9724, 19.4224
+ 
+****************************************
+Calibration error, 16.4714
+
+Mean independent coverage, Mean confidence interval widths, 0.9770, 22.1790
+ 
+****************************************
+Calibration error, 20.5164
+
+Mean independent coverage, Mean confidence interval widths, 0.9820, 26.2201
+ 
+****************************************
+Calibration error, 29.4605
+
+Mean independent coverage, Mean confidence interval widths, 0.9889, 35.1395
+ 

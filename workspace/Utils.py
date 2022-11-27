@@ -37,3 +37,9 @@ def load_pickle(pickle_file):
         print('Unable to load data ', pickle_file, ':', e)
         raise
     return pickle_data
+
+def inverse_transform(x, mean, std):
+    return x * std + mean
+
+def transform(x, mean, std):
+    return (x - mean) / std

@@ -82,7 +82,7 @@ def trainModel(name, mode, XS, YS):
     val_iter = torch.utils.data.DataLoader(val_data, BATCHSIZE, shuffle=True)
     if LOSS == 'MSE':
         criterion = nn.MSELoss()
-    if LOSS == 'MAE':
+    else:
         criterion = nn.L1Loss()
     if OPTIMIZER == 'RMSprop':
         optimizer = torch.optim.RMSprop(model.parameters(), lr=LEARN)
@@ -144,7 +144,7 @@ def testModel(name, mode, XS, YS):
     model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
     if LOSS == 'MSE':
         criterion = nn.MSELoss()
-    if LOSS == 'MAE':
+    else:
         criterion = nn.L1Loss()
     torch_score = evaluateModel(model, criterion, test_iter)
     YS_pred = predictModel(model, test_iter)
@@ -176,7 +176,7 @@ GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
 device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
 ###########################################################
 
-data = pd.read_hdf(FLOWPATH).values
+data = pd.read_csv(FLOWPATH,index_col=[0]).values
 scaler = StandardScaler()
 data = scaler.fit_transform(data)
 print('data.shape', data.shape)

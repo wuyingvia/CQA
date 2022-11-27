@@ -1,1 +1,1 @@
-ADJPATH = '../METRLA/adj_mx.pkl'
+ADJPATH = '../PEMSBAY/adj_mx_bay.pkl'

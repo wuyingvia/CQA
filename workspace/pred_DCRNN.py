@@ -184,7 +184,7 @@ np.random.seed(100)
 GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
 device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
 ###########################################################
-data = pd.read_hdf(FLOWPATH).values
+data = pd.read_csv(FLOWPATH,index_col=[0]).values
 scaler = StandardScaler()
 data = scaler.fit_transform(data)
 print('data.shape', data.shape)
