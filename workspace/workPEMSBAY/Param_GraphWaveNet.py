@@ -1,2 +1,0 @@
-# LOSS = 'GraphWaveNetLoss'
-ADJTYPE = 'doubletransition'

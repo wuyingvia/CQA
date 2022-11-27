@@ -14,9 +14,10 @@ if __name__ == "__main__":
 
     
     model_list = ['pred_GMAN.py']
-    dataset_list = ['PEMS08.conf',]
+    #dataset_list = ['PEMS03.conf', 'PEMS04.conf', 'PEMS08.conf', 'PEMSBAY.conf', 'PEMSD7M.conf', 'METR-LA.conf', 'PEMS07.conf',]
+    dataset_list = ['PEMS03.conf', 'PEMS04.conf', 'PEMS08.conf', 'PEMS07.conf',]
 
-    method_list = ['conformal']
+    method_list = ['bayesian'] # bayesian
 
     limit = len(dataset_list)
     job_count = 0

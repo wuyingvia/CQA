@@ -1,1 +1,0 @@
-ADJPATH = '../METRLA/adj_mx.pkl'
