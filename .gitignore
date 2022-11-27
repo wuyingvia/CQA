@@ -8,4 +8,6 @@ PEMSBAY/
 *.npy
 *.csv
 *.txt
-
+V3分位数最优解/
+configuration/
+results/
