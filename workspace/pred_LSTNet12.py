@@ -1,36 +1,34 @@
-
+import sys
 import os
 import shutil
+import math
+import numpy as np
 import pandas as pd
+import scipy.sparse as ss
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 import time
+import torch
+import torch.nn as nn
+import torch.nn.init as init
+import torch.nn.functional as F
+from torchsummary import summary
 import Metrics
 import Utils
-import torch
-torch.set_num_threads(1)
 from LSTNet import *
 from Param import *
 from Param_LSTNet12 import *
 
 def getXSYS_single(data, mode):
     TRAIN_NUM = int(data.shape[0] * TRAINRATIO)
-    CAL_NUM = int(data.shape[0] * CALRATIO)
     XS, YS = [], []
     if mode == 'TRAIN':    
         for i in range(TRAIN_NUM - TIMESTEP_OUT - TIMESTEP_IN + 1):
             x = data[i:i+TIMESTEP_IN, :]
             y = data[i+TIMESTEP_IN+TIMESTEP_OUT-1:i+TIMESTEP_IN+TIMESTEP_OUT, :]
             XS.append(x), YS.append(y)
-
-    elif mode == 'CAL':
-        for i in range(TRAIN_NUM - TIMESTEP_IN,  CAL_NUM - TIMESTEP_OUT - TIMESTEP_IN + 1):
-            x = data[i:i+TIMESTEP_IN, :]
-            y = data[i+TIMESTEP_IN+TIMESTEP_OUT-1:i+TIMESTEP_IN+TIMESTEP_OUT, :]
-            XS.append(x), YS.append(y)
-
     elif mode == 'TEST':
-        for i in range(CAL_NUM - TIMESTEP_IN,  data.shape[0] - TIMESTEP_OUT - TIMESTEP_IN + 1):
+        for i in range(TRAIN_NUM - TIMESTEP_IN,  data.shape[0] - TIMESTEP_OUT - TIMESTEP_IN + 1):
             x = data[i:i+TIMESTEP_IN, :]
             y = data[i+TIMESTEP_IN+TIMESTEP_OUT-1:i+TIMESTEP_IN+TIMESTEP_OUT, :]
             XS.append(x), YS.append(y)
@@ -70,10 +68,11 @@ def predictModel(model, data_iter):
         YS_pred = np.vstack(YS_pred)
     return YS_pred
 
-def trainModel(name, mode, XS, YS, scaler):
+def trainModel(name, mode, XS, YS):
     print('Model Training Started ...', time.ctime())
     print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
     model = getModel(name)
+    summary(model, (TIMESTEP_IN, N_NODE * CHANNEL), device=device)
     XS_torch, YS_torch = torch.Tensor(XS).to(device), torch.Tensor(YS).to(device)
     trainval_data = torch.utils.data.TensorDataset(XS_torch, YS_torch)
     trainval_size = len(trainval_data)
@@ -126,8 +125,7 @@ def trainModel(name, mode, XS, YS, scaler):
     torch_score = evaluateModel(model, criterion, train_iter)
     YS_pred = predictModel(model, torch.utils.data.DataLoader(trainval_data, BATCHSIZE, shuffle=False))
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
-    YS, YS_pred = Utils.inverse_transform(np.squeeze(YS), scaler['mean'], scaler['std']), \
-                  Utils.inverse_transform(np.squeeze(YS_pred),scaler['mean'], scaler['std'])
+    YS, YS_pred = scaler.inverse_transform(np.squeeze(YS)), scaler.inverse_transform(np.squeeze(YS_pred))
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
     MSE, RMSE, MAE, MAPE = Metrics.evaluate(YS, YS_pred)
     with open(PATH + '/' + name + '_prediction_scores.txt', 'a') as f:
@@ -137,62 +135,8 @@ def trainModel(name, mode, XS, YS, scaler):
     print("%s, %s, Torch MSE, %.10e, %.10f\n" % (name, mode, torch_score, torch_score))
     print("%s, %s, MSE, RMSE, MAE, MAPE, %.10f, %.10f, %.10f, %.10f\n" % (name, mode, MSE, RMSE, MAE, MAPE))
     print('Model Training Ended ...', time.ctime())
-
-def calModel(name, mode, XS, YS, scaler, cal_list):
-    '''
-    this version is quantile calibration with referenced with maximum error
-    '''
-    print("model fixed calibration state:")
-    print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
-    print('MODEL CALIBRATION STATE:')
-    print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
-    XS_torch, YS_torch = torch.Tensor(XS).to(device), torch.Tensor(YS).to(device)
-    # split half data to choose the the expected calibration quantile
-
-
-    cal_data = torch.utils.data.TensorDataset(XS_torch, YS_torch)
-    cal_iter = torch.utils.data.DataLoader(cal_data, BATCHSIZE, shuffle=False)
-    model = getModel(name)
-    model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
-
-    YS_pred_0 = predictModel(model, cal_iter)
-    print('YS.shape, YS_pred.shape,', YS.shape, YS_pred_0.shape)
-    YS, YS_pred_0 = np.squeeze(YS), np.squeeze(YS_pred_0)
-    YS, YS_pred_0 = Utils.inverse_transform(YS, scaler['mean'], scaler['std']), \
-                               Utils.inverse_transform(YS_pred_0, scaler['mean'], scaler['std'])
-
-    # choose the best expected quantile
-    # split some data
-    split = int(YS.shape[0]* CALSPLIT)
-    YS_train = YS[:split]
-    YS_0_train = YS_pred_0[:split]
-    YS_val = YS[split:]
-    YS_0_val = YS_pred_0[split:]
-
-    YS_1_train = YS_0_train * (YS_0_train>0)
-    error = YS_train - YS_1_train
-
-    cali_error = []
-    for i in range(len(cal_list)):
-        cali_error_ = np.quantile(error,cal_list[i])
-        cali_error.append(cali_error_)
-
-    err = [np.stack(cali_error),np.stack(cali_error)]
-    independent_coverage_l = []
-    for i in range(len(cal_list)):
-        y_u_pred = YS_0_val + err[0][i]
-        y_l_pred = YS_0_val - err[1][i]
-
-        y_l_pred = y_l_pred * (y_l_pred>0)
-        mask = YS_val>0
-        independent_coverage = np.logical_and(np.logical_and(y_u_pred >= YS_val, y_l_pred <= YS_val), mask)
-        m_coverage = np.sum(independent_coverage.astype(float))/np.sum(mask)
-        independent_coverage_l.append(m_coverage)
-    m_coverage = np.stack(independent_coverage_l)
-    index = np.argmin(np.abs(m_coverage - 0.9))
-    return  [err[0][index], err[1][index]]
-
-def testModel(name, mode, XS, YS, scaler, err):
+        
+def testModel(name, mode, XS, YS):
     print('Model Testing Started ...', time.ctime())
     print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
     XS_torch, YS_torch = torch.Tensor(XS).to(device), torch.Tensor(YS).to(device)
@@ -205,84 +149,41 @@ def testModel(name, mode, XS, YS, scaler, err):
         criterion = nn.MSELoss()
     if LOSS == 'MAE':
         criterion = nn.L1Loss()
-
-    YS, YS_pred_0= np.squeeze(YS), np.squeeze(predictModel(model, test_iter))
-    YS, YS_pred_0 = Utils.inverse_transform(YS, scaler['mean'], scaler['std']), \
-                               Utils.inverse_transform(YS_pred_0, scaler['mean'], scaler['std'])
-
-    y_u_pred = YS_pred_0 + err[0]
-    y_l_pred = YS_pred_0 - err[1]
-
-    y_l_pred = y_l_pred * (y_l_pred > 0)
-    mask = YS > 0
-    independent_coverage = np.logical_and(np.logical_and(y_u_pred >= YS, y_l_pred <= YS), YS > 0)
-    # compute the coverage and interval width
-    results = {}
-    results["Point predictions"] = np.array(YS)
-    results["Upper limit"] = np.array(y_l_pred)
-    results["Lower limit"] = np.array(y_u_pred)
-    results["Confidence interval widths"] = np.abs(y_u_pred - y_l_pred) * mask
-    results["Mean confidence interval widths"] = np.sum(results["Confidence interval widths"]) / \
-                                                 np.sum(mask)
-    results["Independent coverage indicators"] = independent_coverage
-    results["Mean independent coverage"] = np.sum(independent_coverage.astype(float)) / np.sum(mask)
-
-    results["Calbration error"] = np.mean(err)
-
+    torch_score = evaluateModel(model, criterion, test_iter)
+    YS_pred = predictModel(model, test_iter)
+    print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
+    YS, YS_pred = np.squeeze(YS), np.squeeze(YS_pred)
+    YS = scaler.inverse_transform(YS)
+    YS_pred = scaler.inverse_transform(YS_pred)
+    print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
+    np.save(PATH + '/' + MODELNAME + '_prediction.npy', YS_pred)
+    np.save(PATH + '/' + MODELNAME + '_groundtruth.npy', YS)
+    MSE, RMSE, MAE, MAPE = Metrics.evaluate(YS, YS_pred)
     with open(PATH + '/' + name + '_prediction_scores.txt', 'a') as f:
-        f.write("calibration error,  %.4f\n "
-                % results["Calbration error"])
-        f.write("Mean independent coverage, Mean confidence interval widths, %.4f, %.4f\n "
-                % (results["Mean independent coverage"], results["Mean confidence interval widths"]))
-
+        f.write("%s, %s, Torch MSE, %.10e, %.10f\n" % (name, mode, torch_score, torch_score))
+        f.write("%s, %s, MSE, RMSE, MAE, MAPE, %.10f, %.10f, %.10f, %.10f\n" % (name, mode, MSE, RMSE, MAE, MAPE))
     print('*' * 40)
-    print("Calibration error, %.4f\n" % np.mean(err[0] + err[1]))
-    print("Mean independent coverage, Mean confidence interval widths, %.4f, %.4f\n "
-          % (results["Mean independent coverage"], results["Mean confidence interval widths"]))
-
+    print("%s, %s, Torch MSE, %.10e, %.10f\n" % (name, mode, torch_score, torch_score))
+    print("%s, %s, MSE, RMSE, MAE, MAPE, %.10f, %.10f, %.10f, %.10f\n" % (name, mode, MSE, RMSE, MAE, MAPE))
+    print('Model Testing Ended ...', time.ctime())
+        
 ################# Parameter Setting #######################
 MODELNAME = 'LSTNet12'
-
-import argparse
-import configparser
-parser = argparse.ArgumentParser()
-parser.add_argument('--config',default='../configuration/PEMS03.conf',type = str, help = 'configuration file path')
-parser.add_argument('--cuda', type=str, default='0')
-parser.add_argument('--uncer_m', type=str, default='conformal') # quantile/quantile_conformal/adaptive/dropout/bayesian
-parser.add_argument('--dropout', type=float, default='0.3')
-
-args = parser.parse_args()
-os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
-config = configparser.ConfigParser()
-config.read(args.config)
-config_data = config['Data']
-DATANAME = config_data['DATANAME']
-FLOWPATH = config_data['FLOWPATH']
-N_NODE = int(config_data['N_NODE'])
-ADJPATH = config_data['ADJPATH']
-UNCER_M = args.uncer_m
-
-if UNCER_M == 'quantile':
-    quantiles_list = [0.05, 0.95]
-elif UNCER_M == 'quantile_conformal':
-    quantiles_list = [0.15, 0.85]
-elif UNCER_M == 'dropout':
-    drop = args.dropout
-
-KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + UNCER_M + '_' + datetime.now().strftime(
-    "%y%m%d%H%M")
-print(KEYWORD)
+KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + datetime.now().strftime("%y%m%d%H%M")
 PATH = '../save/' + KEYWORD
 torch.manual_seed(100)
 torch.cuda.manual_seed(100)
 np.random.seed(100)
-##########################################################
-# GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
-# device = torch.device('cuda:6') if torch.cuda.is_available() else torch.device("cpu")
-GPU = '0'
+# torch.backends.cudnn.deterministic = True
+########################################################### 
+GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
 device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
 ###########################################################
-
+data = pd.read_hdf(FLOWPATH).values
+scaler = StandardScaler()
+data = scaler.fit_transform(data)
+print('data.shape', data.shape)
+###########################################################
 def main():
     if not os.path.exists(PATH):
         os.makedirs(PATH)
@@ -290,46 +191,19 @@ def main():
     shutil.copy2(currentPython, PATH)
     shutil.copy2('LSTNet.py', PATH)
     shutil.copy2('Param.py', PATH)
-    shutil.copy2('Param_LSTNet6.py', PATH)
-
-    if DATANAME == 'PEMS04':
-        data = np.squeeze(np.load(FLOWPATH)['data'])[...,0]
-    elif DATANAME == 'PEMS08':
-        data = np.squeeze(np.load(FLOWPATH)['data'])[..., 0]
-    elif DATANAME == 'PEMS03':
-        data = np.squeeze(np.load(FLOWPATH)['data'])
-    elif DATANAME == 'PEMS07':
-        data = np.squeeze(np.load(FLOWPATH)['data'])
-    elif DATANAME == 'METR-LA':
-        data = pd.read_hdf(FLOWPATH).values
-    elif DATANAME == 'PEMS-BAY':
-        data = pd.read_hdf(FLOWPATH).values
-    elif DATANAME == 'PEMSD7M':
-        data = pd.read_csv(FLOWPATH,index_col=[0]).values
-
-    print('data.shape', data.shape)
-    trainx, trainy = getXSYS_single(data, 'TRAIN')
-    # transform
-    mean = trainx.mean()
-    std = trainy.std()
-    scaler = {'mean': mean, 'std': std}
-    data = Utils.transform(data, scaler['mean'], scaler['std'])
+    shutil.copy2('Param_LSTNet12.py', PATH)
     
     print(KEYWORD, 'training started', time.ctime())
     trainXS, trainYS = getXSYS_single(data, 'TRAIN')
     print('TRAIN XS.shape YS,shape', trainXS.shape, trainYS.shape)
-    trainModel(MODELNAME, 'train', trainXS, trainYS, scaler)
-
-    print(KEYWORD, 'calibration started', time.ctime())
-    calXS, calYS = getXSYS_single(data, 'CAL')
-    print('CAL XS.shape, YS.shape', calXS.shape, calYS.shape)
-    err = calModel(MODELNAME, 'cal', calXS, calYS, scaler, cal_list)
-
+    trainModel(MODELNAME, 'train', trainXS, trainYS)
+    
     print(KEYWORD, 'testing started', time.ctime())
     testXS, testYS = getXSYS_single(data, 'TEST')
     print('TEST XS.shape, YS.shape', testXS.shape, testYS.shape)
-    testModel(MODELNAME, 'test', testXS, testYS, scaler, err)
+    testModel(MODELNAME, 'test', testXS, testYS)
 
+    
 if __name__ == '__main__':
     main()
 

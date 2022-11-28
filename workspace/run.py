@@ -13,10 +13,10 @@ def run(model, dataset, method, cuda_idx):
 if __name__ == "__main__":
 
     
+    #model_list = ['pred_STGCN12.py','pred_LSTNet12.py', 'pred_GraphWaveNet.py', 'pred_MTGNN.py', 'pred_GMAN.py']
     model_list = ['pred_GMAN.py']
-    dataset_list = ['PEMS08.conf',]
-
-    method_list = ['conformal']
+    dataset_list = ['PEMS03.conf', 'PEMS04.conf', 'PEMS08.conf', 'PEMSBAY.conf', 'PEMSD7M.conf', 'METR-LA.conf', 'PEMS07.conf',]
+    method_list = ['adaptive']
 
     limit = len(dataset_list)
     job_count = 0
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         for dataset in dataset_list:
             for method in method_list:
 
-                p = mp.Process(target=run, args=(model, dataset, method, job_count % 8))
+                p = mp.Process(target=run, args=(model, dataset, method, job_count % 4))
                 p.start()
                 process_list.append(p)
 
