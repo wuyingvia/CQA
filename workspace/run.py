@@ -13,11 +13,10 @@ def run(model, dataset, method, cuda_idx):
 if __name__ == "__main__":
 
     
-    model_list = ['pred_STGCN12.py','pred_LSTNet12.py', 'pred_GraphWaveNet.py', 'pred_MTGNN.py', 'pred_GMAN.py']
-
+    model_list = ['pred_GMAN.py']
     dataset_list = ['PEMS03.conf', 'PEMS04.conf', 'PEMS08.conf', 'PEMSBAY.conf', 'PEMSD7M.conf', 'METR-LA.conf', 'PEMS07.conf',]
 
-    method_list = ['quantile_conformal']
+    method_list = ['dropout']
 
     limit = len(dataset_list)
     job_count = 0

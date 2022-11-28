@@ -4,9 +4,7 @@ import torch.nn as nn
 from Param import *
 import sys
 import numpy as np
-# import scipy.sparse as sp
-# from torch.nn.functional import normalize
-# from torchsummary import summary
+
 
 class TGCNGraphConvolution(nn.Module):
     def __init__(self, adj, num_gru_units: int, output_dim: int, bias: float = 0.0):
@@ -106,7 +104,7 @@ class TGCNCell(nn.Module):
 
 
 class TGCN(nn.Module):
-    def __init__(self, adj, horizon, num_quantiles, hidden_dim=64, **kwargs):
+    def __init__(self, adj, horizon, hidden_dim=64, **kwargs):
         super(TGCN, self).__init__()
         self._input_dim = adj.shape[0]
         self.horizon = horizon
@@ -114,10 +112,6 @@ class TGCN(nn.Module):
         self.register_buffer("adj", torch.FloatTensor(adj))
         self.tgcn_cell = TGCNCell(self.adj, self._input_dim, self._hidden_dim)
         self.fc = nn.Linear(self._hidden_dim, self.horizon)
-
-        #
-        self.linear = torch.nn.Linear(1, num_quantiles)
-        self.num_quantiles = num_quantiles
 
     def forward(self, inputs):
         batch_size, seq_len, num_nodes = inputs.shape
@@ -131,15 +125,8 @@ class TGCN(nn.Module):
             output = output.reshape((batch_size, num_nodes, self._hidden_dim))
         # output = output.reshape((-1, output.size(2)))
         output = self.fc(output)
-        # [batch_size, seq_len, num_nodes]
-        output_ = output.reshape((batch_size, -1, num_nodes))
-
-        # # to construct multi-output
-        output = output_.view([-1,1])
-        linear_o = self.linear(output)
-        linear_2 = linear_o.view([output_.size(0), output_.size(1), output_.size(2), self.num_quantiles])
-
-        return linear_2
+        output = output.reshape((batch_size, -1, num_nodes))
+        return output
 
     @staticmethod
     def add_model_specific_arguments(parent_parser):
@@ -170,11 +157,9 @@ def main():
     from Param_TGCN import ADJPATH
     GPU = sys.argv[-1] if len(sys.argv) == 2 else '1'
     device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
-
     _, _, adj_mx = load_pickle(ADJPATH)
     adj = symmetrical_normalized_matrix(adj_mx)
     model = TGCN(adj, horizon=TIMESTEP_OUT).to(device)
-    # summary(model, (TIMESTEP_IN, N_NODE*CHANNEL), device=device)
 
 
 if __name__ == '__main__':

@@ -4,8 +4,6 @@ import torch.nn.functional as F
 import numbers
 import sys
 import numpy as np
-from torchsummary import summary
-
 
 class graph_constructor(nn.Module):         # uni-directed: M1M2-M2M1
     def __init__(self, nnodes, k, dim, device, alpha=3, static_feat=None):
@@ -47,7 +45,6 @@ class graph_constructor(nn.Module):         # uni-directed: M1M2-M2M1
         adj = adj*mask
         return adj
 
-
 class mixprop(nn.Module):
     def __init__(self,c_in,c_out,gdep,dropout,alpha):
         super(mixprop, self).__init__()
@@ -71,7 +68,6 @@ class mixprop(nn.Module):
         ho = self.mlp(ho)
         return ho
 
-
 class nconv(nn.Module):
     def __init__(self):
         super(nconv,self).__init__()
@@ -80,7 +76,6 @@ class nconv(nn.Module):
         x = torch.einsum('ncwl,vw->ncvl',(x,A))
         return x.contiguous()
 
-
 class linear(nn.Module):
     def __init__(self,c_in,c_out,bias=True):
         super(linear,self).__init__()
@@ -88,7 +83,6 @@ class linear(nn.Module):
 
     def forward(self,x):
         return self.mlp(x)
-
 
 class dilated_inception(nn.Module):
     def __init__(self, cin, cout, dilation_factor=2):
@@ -107,7 +101,6 @@ class dilated_inception(nn.Module):
             x[i] = x[i][...,-x[-1].size(3):]
         x = torch.cat(x,dim=1)
         return x
-
 
 class LayerNorm(nn.Module):
     __constants__ = ['normalized_shape', 'weight', 'bias', 'eps', 'elementwise_affine']
@@ -142,17 +135,15 @@ class LayerNorm(nn.Module):
         return '{normalized_shape}, eps={eps}, ' \
             'elementwise_affine={elementwise_affine}'.format(**self.__dict__)
 
-
-
-
 class gtnet(nn.Module):
-    def __init__(self, gcn_true, buildA_true, gcn_depth, num_nodes, device, predefined_A=None, static_feat=None, dropout=0.3, subgraph_size=20, node_dim=40, dilation_exponential=1, conv_channels=32, residual_channels=32, skip_channels=64, end_channels=128, seq_length=12, in_dim=2, out_dim=12, layers=3, propalpha=0.05, tanhalpha=3, layer_norm_affline=True):
+    def __init__(self, gcn_true, buildA_true, gcn_depth, num_nodes, device, drop, predefined_A=None, static_feat=None, dropout=0.3, subgraph_size=20, node_dim=40, dilation_exponential=1, conv_channels=32, residual_channels=32, skip_channels=64, end_channels=128, seq_length=12, in_dim=2, out_dim=12, layers=3, propalpha=0.05, tanhalpha=3, layer_norm_affline=True):
         super(gtnet, self).__init__()
         self.gcn_true = gcn_true
         self.buildA_true = buildA_true
         self.num_nodes = num_nodes
         self.dropout = dropout
         self.predefined_A = predefined_A
+        self.drop_layer = nn.Dropout(p=drop)
         self.filter_convs = nn.ModuleList()
         self.gate_convs = nn.ModuleList()
         self.residual_convs = nn.ModuleList()
@@ -228,7 +219,6 @@ class gtnet(nn.Module):
 
         self.idx = torch.arange(self.num_nodes).to(device)
 
-        self.linear = nn.Linear(in_features=1, out_features=2)
 
     def forward(self, input, idx=None):
         seq_len = input.size(3)
@@ -272,16 +262,10 @@ class gtnet(nn.Module):
 
         skip = self.skipE(x) + skip
         x = F.relu(skip)
+        x = self.drop_layer(x)
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
-
-        # output multi-output # [batch, seq, node, 1] -> [batch, seq, node, 1, len(quantiles_list)]
-        out = torch.unsqueeze(x,0).view([-1,1])
-        out = self.linear(out)
-        out = out.view([-1, x.size(1), x.size(2), x.size(3),2])
-        return out
-
-
+        return x
 
 def main():
     from Param import CHANNEL, N_NODE, TIMESTEP_IN, TIMESTEP_OUT
@@ -309,8 +293,6 @@ def main():
                   propalpha=0.05,
                   tanhalpha=3,
                   layer_norm_affline=True).to(device)
-    summary(model, (CHANNEL, N_NODE, TIMESTEP_IN), device=device)
-
 
 if __name__ == '__main__':
     main()

@@ -1,19 +1,15 @@
 '''
 ASTGCN
 '''
-import sys
-import math
+
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
 import pandas as pd
 from Param import *
 from Param_ASTGCN import *
 from scipy.sparse.linalg import eigs
-from torchsummary import summary
 from Utils import *
 
 class Spatial_Attention_layer(nn.Module):
@@ -334,17 +330,14 @@ def main():
     import sys
     GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
     device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
-#     distance = adj_tans(sensor_ids_file=SENSOR_IDS, distance_file=DISTANCES)
-#     adj_mx, _ = get_adjacency_matrix(distance, N_NODE)
-    adj_mx = pd.read_csv(ADJPATH).values
-    adj_mx[adj_mx>0]=1
+    distance = adj_tans(sensor_ids_file=SENSOR_IDS, distance_file=DISTANCES)
+    adj_mx, _ = get_adjacency_matrix(distance, N_NODE)
     # adj_mx is 0-1 pure adajecent matrix 
     L_tilde = scaled_Laplacian(adj_mx)
     cheb_polynomials = [torch.from_numpy(i).type(torch.FloatTensor).to(device) for i in cheb_polynomial(L_tilde, K=3)]
     model = ASTGCN(device, cheb_polynomials = cheb_polynomials,nb_block =2, 
                    in_channels = 1, K = 3, nb_chev_filter = 64, nb_time_filter = 64, time_strides = 2, 
                    num_for_predict = TIMESTEP_OUT, len_input = 12*(WEEK+DAY+HOUR), num_of_vertices = N_NODE).to(device)
-    summary(model, (N_NODE,CHANNEL,12*(WEEK+DAY+HOUR)), device=device)
     
 if __name__ == '__main__':
     main()

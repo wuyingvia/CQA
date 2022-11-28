@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchsummary import summary
 from Param import *
 from Param_GMAN import *
 
@@ -25,7 +24,7 @@ class conv2d_(nn.Module):
 
         if use_bias:
             torch.nn.init.zeros_(self.conv.bias)
-
+    
     def forward(self, x):
         x = x.permute(0, 3, 2, 1)
         x = F.pad(x, ([self.padding_size[1], self.padding_size[1], self.padding_size[0], self.padding_size[0]]))
@@ -326,7 +325,7 @@ class GMAN(nn.Module):
         return:     [batch_size, num_pred, num_vertex]
     """
 
-    def __init__(self, SE, timestep_in, device, statt_layers=1, att_heads=8, att_dims=8, bn_decay=0.1):
+    def __init__(self, SE, timestep_in, device, drop, statt_layers=1, att_heads=8, att_dims=8, bn_decay=0.1):
         super(GMAN, self).__init__()
         L = statt_layers 
         K = att_heads
@@ -342,8 +341,8 @@ class GMAN(nn.Module):
                        bn_decay=bn_decay)
         self.FC_2 = FC(input_dims=[D, D], units=[D, 1], activations=[F.relu, None],
                        bn_decay=bn_decay)
-        self.linear = nn.Linear(in_features=1, out_features= 2)
-
+        self.drop_layer = nn.Dropout(p=drop)
+        
     def forward(self, X, TE):
 
         # input
@@ -361,18 +360,10 @@ class GMAN(nn.Module):
         # decoder
         for net in self.STAttBlock_2:
             X = net(X, STE_pred)
-        # output [batch,sequence, node, 1]
-        X = self.FC_2(X)
-
-        # multiple output
-        # output [batch,sequence, node, 2]
-        out = X.reshape([-1, 1])
-        out = self.linear(out)
-        out = out.view([-1, X.size(1), X.size(2), X.size(3), 2])
-        out = torch.squeeze((out))
+        # output
+        X = self.FC_2(self.drop_layer(X))
         del STE, STE_his, STE_pred
-        #return torch.squeeze(X, 3)
-        return out
+        return torch.squeeze(X, 3)
 
 
 def main():
@@ -380,7 +371,6 @@ def main():
     device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
     SE = torch.zeros((N_NODE, SE_DIM), dtype=torch.float32).to(device=device)
     model = GMAN(SE, TIMESTEP_IN, device).to(device)
-    summary(model, [(TIMESTEP_IN, N_NODE),(TIMESTEP_IN+TIMESTEP_OUT, TE_DIM)], device=device)
     
 if __name__ == '__main__':
     main()

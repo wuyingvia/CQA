@@ -51,7 +51,7 @@ MODELNAME = 'CopyLastSteps'
 KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + datetime.now().strftime("%y%m%d%H%M")
 PATH = '../save/' + KEYWORD
 ################# Parameter Setting #######################
-data = pd.read_csv(FLOWPATH,index_col=[0]).values
+data = pd.read_hdf(FLOWPATH).values
 print('data.shape', data.shape)
 ###########################################################
 

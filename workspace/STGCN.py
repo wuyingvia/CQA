@@ -9,8 +9,8 @@ import torch.nn.init as init
 import torch.nn.functional as F
 import numpy as np
 import pandas as pd
-# from scipy.sparse.linalg import eigs
-# from torchsummary import summary
+from scipy.sparse.linalg import eigs
+#from torchsummary import summary
 from Param import *
 
 '''
@@ -114,23 +114,18 @@ class output_layer(nn.Module):
         return self.fc(x_t2)
 
 class STGCN(nn.Module):
-    def __init__(self, ks, kt, bs, T, n, Lk, p, num_quantiles):
+    def __init__(self, ks, kt, bs, T, n, Lk, p, dropout):
         super(STGCN, self).__init__()
         self.st_conv1 = st_conv_block(ks, kt, n, bs[0], p, Lk)
         self.st_conv2 = st_conv_block(ks, kt, n, bs[1], p, Lk)
         self.output = output_layer(bs[1][2], T - 4 * (kt - 1), n)
-        self.linear = torch.nn.Linear(1, num_quantiles)
-        self.num_quantiles = num_quantiles
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         x_st1 = self.st_conv1(x)
         x_st2 = self.st_conv2(x_st1)
-        output_ = self.output(x_st2)# [64,1,1,325] [batch,feature,t,node]
-        # # to construct multi-output
-        output = output_.view([-1,1])
-        linear_o = self.linear(output)
-        linear_2 = linear_o.view([-1, output_.size(1), output_.size(2), output_.size(3), self.num_quantiles])
-        return linear_2
+        x_st2 = self.dropout(x_st2)
+        return self.output(x_st2)
 
 def weight_matrix(W, sigma2=0.1, epsilon=0.5):
     '''
@@ -176,7 +171,7 @@ def main():
     Lk = cheb_poly(L, ks)
     Lk = torch.Tensor(Lk.astype(np.float32)).to(device)
     model = STGCN(ks, kt, bs, T, n, Lk, p).to(device)
-    # summary(model, (CHANNEL, TIMESTEP_IN, N_NODE), device=device)
+    #summary(model, (CHANNEL, TIMESTEP_IN, N_NODE), device=device)
     
 if __name__ == '__main__':
     main()

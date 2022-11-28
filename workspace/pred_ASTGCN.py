@@ -20,13 +20,13 @@ from Param_ASTGCN import *
 from Utils import *
 
 def getXSYS(data, mode):
-    start_index = 288*5*WEEK
+    start_index = 288*7*WEEK
     data[start_index:].shape[0] * TRAINRATIO
     TRAIN_NUM = int(data.shape[0] * TRAINRATIO)
     XS, YS = [], []
     if mode == 'TRAIN':    
         for i in range(TRAIN_NUM - TIMESTEP_OUT - start_index + 1):
-            week_index = [j for j in range(start_index - 288*5*WEEK+i, start_index+i,288*5)]
+            week_index = [j for j in range(start_index - 288*7*WEEK+i, start_index+i,288*7)]
             week_sample = np.concatenate([data[k:k+12] for k in week_index],axis=0)
             day_index  = [j for j in range(start_index - 288*1*DAY+i, start_index+i,288*1)]
             day_sample = np.concatenate([data[k:k+12] for k in day_index],axis=0)
@@ -37,7 +37,7 @@ def getXSYS(data, mode):
             XS.append(x), YS.append(y)
     elif mode == 'TEST':
         for i in range(TRAIN_NUM - start_index,  data.shape[0] - TIMESTEP_OUT - start_index + 1):
-            week_index = [j for j in range(start_index - 288*5*WEEK+i, start_index+i,288*5)]
+            week_index = [j for j in range(start_index - 288*7*WEEK+i, start_index+i,288*7)]
             week_sample = np.concatenate([data[k:k+12] for k in week_index],axis=0)
             day_index  = [j for j in range(start_index - 288*1*DAY+i, start_index+i,288*1)]
             day_sample = np.concatenate([data[k:k+12] for k in day_index],axis=0)
@@ -54,10 +54,8 @@ def getXSYS(data, mode):
     return XS, YS
 
 def getModel(name):
-#     distance = adj_tans(sensor_ids_file=SENSOR_IDS,distance_file=DISTANCES)
-#     adj_mx, _ = get_adjacency_matrix(distance, N_NODE)
-    adj_mx = pd.read_csv(ADJPATH).values
-    adj_mx[adj_mx>0]=1
+    distance = adj_tans(sensor_ids_file=SENSOR_IDS,distance_file=DISTANCES)
+    adj_mx, _ = get_adjacency_matrix(distance, N_NODE)
     L_tilde = scaled_Laplacian(adj_mx)
     cheb_polynomials = [torch.from_numpy(i).type(torch.FloatTensor).to(device) for i in cheb_polynomial(L_tilde, K=3)]
     model = ASTGCN(device, cheb_polynomials = cheb_polynomials, in_channels = CHANNEL, 
@@ -224,7 +222,7 @@ torch.set_num_threads(cpu_num)
 GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
 device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
 ###########################################################
-data = pd.read_csv(FLOWPATH,index_col=[0])
+data = pd.read_hdf(FLOWPATH).values
 scaler = StandardScaler()
 data = scaler.fit_transform(data)
 print('data.shape', data.shape)
