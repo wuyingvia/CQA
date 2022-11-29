@@ -1,18 +1,14 @@
 import sys
 import os
 import shutil
-import math
 import numpy as np
 import pandas as pd
-import scipy.sparse as ss
-from sklearn.preprocessing import StandardScaler
+import Utils
 from datetime import datetime
 import time
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 import torch.nn.functional as F
-from torchsummary import summary
 import Metrics
 from STGCN import *
 from Param import *
@@ -67,11 +63,10 @@ def predictModel(model, data_iter):
         YS_pred = np.vstack(YS_pred)
     return YS_pred
 
-def trainModel(name, mode, XS, YS):
+def trainModel(name, mode, XS, YS, scaler):
     print('Model Training Started ...', time.ctime())
     print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
     model = getModel(name)
-    summary(model, (CHANNEL, TIMESTEP_IN, N_NODE), device=device)
     XS_torch, YS_torch = torch.Tensor(XS).to(device), torch.Tensor(YS).to(device)
     trainval_data = torch.utils.data.TensorDataset(XS_torch, YS_torch)
     trainval_size = len(trainval_data)
@@ -123,7 +118,7 @@ def trainModel(name, mode, XS, YS):
     torch_score = evaluateModel(model, criterion, train_iter)
     YS_pred = predictModel(model, torch.utils.data.DataLoader(trainval_data, BATCHSIZE, shuffle=False))
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
-    YS, YS_pred = scaler.inverse_transform(np.squeeze(YS)), scaler.inverse_transform(np.squeeze(YS_pred))
+    YS, YS_pred = Utils.inverse_transform(np.squeeze(YS), scaler['mean'], scaler['std']), Utils.inverse_transform(np.squeeze(YS_pred), scaler['mean'], scaler['std'])
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
     MSE, RMSE, MAE, MAPE = Metrics.evaluate(YS, YS_pred)
     with open(PATH + '/' + name + '_prediction_scores.txt', 'a') as f:
@@ -134,7 +129,7 @@ def trainModel(name, mode, XS, YS):
     print("%s, %s, MSE, RMSE, MAE, MAPE, %.10f, %.10f, %.10f, %.10f\n" % (name, mode, MSE, RMSE, MAE, MAPE))
     print('Model Training Ended ...', time.ctime())
         
-def testModel(name, mode, XS, YS):
+def testModel(name, mode, XS, YS, scaler):
     print('Model Testing Started ...', time.ctime())
     print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
     XS_torch, YS_torch = torch.Tensor(XS).to(device), torch.Tensor(YS).to(device)
@@ -150,11 +145,11 @@ def testModel(name, mode, XS, YS):
     YS_pred = predictModel(model, test_iter)
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
     YS, YS_pred = np.squeeze(YS), np.squeeze(YS_pred)
-    YS = scaler.inverse_transform(YS)
-    YS_pred = scaler.inverse_transform(YS_pred)
+    YS = Utils.inverse_transform(YS, scaler['mean'], scaler['std'])
+    YS_pred = Utils.inverse_transform(YS_pred, scaler['mean'], scaler['std'])
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
-    np.save(PATH + '/' + MODELNAME + '_prediction.npy', YS_pred)
-    np.save(PATH + '/' + MODELNAME + '_groundtruth.npy', YS)
+    # np.save(PATH + '/' + MODELNAME + '_prediction.npy', YS_pred)
+    # np.save(PATH + '/' + MODELNAME + '_groundtruth.npy', YS)
     MSE, RMSE, MAE, MAPE = Metrics.evaluate(YS, YS_pred)
     with open(PATH + '/' + name + '_prediction_scores.txt', 'a') as f:
         f.write("%s, %s, Torch MSE, %.10e, %.10f\n" % (name, mode, torch_score, torch_score))
@@ -166,21 +161,35 @@ def testModel(name, mode, XS, YS):
         
 ################# Parameter Setting #######################
 MODELNAME = 'STGCN' + str(TIMESTEP_OUT)
+import argparse as arg
+
+import argparse
+import configparser
+parser = argparse.ArgumentParser()
+parser.add_argument('--config',default='../configuration/PEMS08.conf',type = str, help = 'configuration file path')
+parser.add_argument('--cuda', type=str, default='0')
+parser.add_argument('--uncer_m', type=str, default='point') # quantile/quantile_conformal/adaptive/dropout
+parser.add_argument('--dropout', type=float, default='0.3') # quantile/quantile_conformal/adaptive
+args = parser.parse_args()
+os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
+config = configparser.ConfigParser()
+config.read(args.config)
+config_data = config['Data']
+DATANAME = config_data['DATANAME']
+FLOWPATH = config_data['FLOWPATH']
+N_NODE = int(config_data['N_NODE'])
+ADJPATH = config_data['ADJPATH']
+UNCER_M = args.uncer_m
+
 KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + datetime.now().strftime("%y%m%d%H%M")
 PATH = '../save/' + KEYWORD
 torch.manual_seed(100)
 torch.cuda.manual_seed(100)
 np.random.seed(100)
 ###########################################################
-GPU = sys.argv[-1] if len(sys.argv) == 2 else '3'
+GPU = 0
 device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
-###########################################################
-
-data = pd.read_hdf(FLOWPATH).values
-scaler = StandardScaler()
-data = scaler.fit_transform(data)
-print('data.shape', data.shape)
-    
+########################################################### 
 def main():
     if not os.path.exists(PATH):
         os.makedirs(PATH)
@@ -189,16 +198,40 @@ def main():
     shutil.copy2('STGCN.py', PATH)
     shutil.copy2('Param.py', PATH)
     shutil.copy2('Param_STGCN12.py', PATH)
-        
+
+    if DATANAME == 'PEMS04':
+        data = np.squeeze(np.load(FLOWPATH)['data'])[...,0]
+    elif DATANAME == 'PEMS08':
+        data = np.squeeze(np.load(FLOWPATH)['data'])[...,0]
+    elif DATANAME == 'PEMS03':
+        data = np.squeeze(np.load(FLOWPATH)['data'])
+    elif DATANAME == 'PEMS07':
+        data = np.squeeze(np.load(FLOWPATH)['data'])
+    elif DATANAME == 'METR-LA':
+        data = pd.read_hdf(FLOWPATH).values
+    elif DATANAME == 'PEMS-BAY':
+        data = pd.read_hdf(FLOWPATH).values
+    elif DATANAME == 'PEMSD7M':
+        data = pd.read_csv(FLOWPATH,index_col=[0]).values
+
+    print('data.shape', data.shape)
+
+    trainx, trainy = getXSYS_single(data, 'TRAIN')
+    # transform
+    mean = trainx.mean()
+    std = trainy.std()
+    scaler = {'mean': mean, 'std': std}
+    data = Utils.transform(data, scaler['mean'], scaler['std'])  
+     
     print(KEYWORD, 'training started', time.ctime())
     trainXS, trainYS = getXSYS_single(data, 'TRAIN')
     print('TRAIN XS.shape YS,shape', trainXS.shape, trainYS.shape)
-    trainModel(MODELNAME, 'train', trainXS, trainYS)
+    trainModel(MODELNAME, 'train', trainXS, trainYS, scaler)
     
     print(KEYWORD, 'testing started', time.ctime())
     testXS, testYS = getXSYS_single(data, 'TEST')
     print('TEST XS.shape, YS.shape', testXS.shape, testYS.shape)
-    testModel(MODELNAME, 'test', testXS, testYS)
+    testModel(MODELNAME, 'test', testXS, testYS, scaler)
 
     
 if __name__ == '__main__':

@@ -4,14 +4,10 @@ import os
 import shutil
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 import time
 import torch
 import torch.nn as nn
-import torch.nn.init as init
-import torch.nn.functional as F
-from torchsummary import summary
 import Metrics
 from GMAN import *
 from Param import *
@@ -42,6 +38,7 @@ def getTE(df, mode):
     # data: numpy, data_time: numpy from getTimestamp 
 
     time = pd.DatetimeIndex(df.index)
+    df.index = pd.to_datetime(df.index).astype('datetime64[ns]')
     # torch.tensor: (34272, 1)     Value: 0-6, Monday=0, Sunday=6
     dayofweek = np.reshape(np.array(time.weekday), (-1, 1))
     timeofday = (df.index.values - df.index.values.astype("datetime64[D]")) / np.timedelta64(1, "D")
@@ -77,7 +74,7 @@ def getSE(SE_file):
     return SE
 
 
-def getModel(name, device):
+def getModel(name, device, SEPATH):
     SE = getSE(SEPATH).to(device=device)
     model = GMAN(SE, TIMESTEP_IN, device).to(device)
     return model
@@ -106,11 +103,10 @@ def predictModel(model, data_iter):
     return YS_pred
 
 
-def trainModel(name, mode, XS, TE, YS, device):
+def trainModel(name, mode, XS, TE, YS, device, scaler, SEPATH):
     print('Model Training Started ...', time.ctime())
     print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
-    model = getModel(name, device)
-    summary(model, [(TIMESTEP_IN, N_NODE),(TIMESTEP_IN+TIMESTEP_OUT, TE_DIM)], device=device)
+    model = getModel(name, device, SEPATH)
     XS_torch, YS_torch = torch.Tensor(XS).to(device), torch.Tensor(YS).to(device)
     TE_torch = torch.Tensor(TE).to(device)
     trainval_data = torch.utils.data.TensorDataset(XS_torch, TE_torch, YS_torch)
@@ -174,7 +170,7 @@ def trainModel(name, mode, XS, TE, YS, device):
     torch_score = evaluateModel(model, criterion, train_iter)
     YS_pred = predictModel(model, torch.utils.data.DataLoader(trainval_data, BATCHSIZE, shuffle=False))
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
-    YS, YS_pred = scaler.inverse_transform(np.squeeze(YS)), scaler.inverse_transform(np.squeeze(YS_pred))
+    YS, YS_pred = Utils.inverse_transform(np.squeeze(YS), scaler['mean'], scaler['std']), Utils.inverse_transform(np.squeeze(YS_pred), scaler['mean'], scaler['std'])
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
     MSE, RMSE, MAE, MAPE = Metrics.evaluate(YS, YS_pred)
     with open(PATH + '/' + name + '_prediction_scores.txt', 'a') as f:
@@ -186,7 +182,7 @@ def trainModel(name, mode, XS, TE, YS, device):
     print('Model Training Ended ...', time.ctime())
 
 
-def testModel(name, mode, XS, TE, YS, device):
+def testModel(name, mode, XS, TE, YS, device, scaler, SEPATH):
     if LOSS == "MaskMAE":
         criterion = Utils.masked_mae
     if LOSS == 'MSE':
@@ -199,16 +195,16 @@ def testModel(name, mode, XS, TE, YS, device):
     TE_torch = torch.Tensor(TE).to(device)
     test_data = torch.utils.data.TensorDataset(XS_torch, TE_torch, YS_torch)
     test_iter = torch.utils.data.DataLoader(test_data, BATCHSIZE, shuffle=False)
-    model = getModel(name, device)
+    model = getModel(name, device, SEPATH)
     model.load_state_dict(torch.load(PATH+ '/' + name + '.pt'))
     
     torch_score = evaluateModel(model, criterion, test_iter)
     YS_pred = predictModel(model, test_iter)
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
-    YS, YS_pred = scaler.inverse_transform(np.squeeze(YS)), scaler.inverse_transform(np.squeeze(YS_pred))
+    YS, YS_pred = Utils.inverse_transform(np.squeeze(YS), scaler['mean'], scaler['std']), Utils.inverse_transform(np.squeeze(YS_pred), scaler['mean'], scaler['std'])
     print('YS.shape, YS_pred.shape,', YS.shape, YS_pred.shape)
-    np.save(PATH + '/' + MODELNAME + '_prediction.npy', YS_pred)
-    np.save(PATH + '/' + MODELNAME + '_groundtruth.npy', YS)
+    # np.save(PATH + '/' + MODELNAME + '_prediction.npy', YS_pred)
+    # np.save(PATH + '/' + MODELNAME + '_groundtruth.npy', YS)
     MSE, RMSE, MAE, MAPE = Metrics.evaluate(YS, YS_pred)
     print('*' * 40)
     print("%s, %s, Torch MSE, %.10e, %.10f" % (name, mode, torch_score, torch_score))
@@ -227,28 +223,36 @@ def testModel(name, mode, XS, TE, YS, device):
 
 ################# Parameter Setting #######################
 MODELNAME = 'GMAN'
-KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + datetime.now().strftime("%y%m%d%H%M")
+
+import argparse
+import configparser
+parser = argparse.ArgumentParser()
+parser.add_argument('--config',default='../configuration/PEMS03.conf',type = str, help = 'configuration file path')
+parser.add_argument('--cuda', type=str, default='0')
+parser.add_argument('--uncer_m', type=str, default='dropout') # quantile/quantile_conformal/adaptive/dropout
+parser.add_argument('--dropout', type=float, default='0.3') # quantile/quantile_conformal/adaptive
+args = parser.parse_args()
+os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
+config = configparser.ConfigParser()
+config.read(args.config)
+config_data = config['Data']
+DATANAME = config_data['DATANAME']
+FLOWPATH = config_data['FLOWPATH_GMAN']
+N_NODE = int(config_data['N_NODE'])
+ADJPATH = config_data['ADJPATH']
+UNCER_M = args.uncer_m
+SEPATH = config_data['SEPATH']
+
+KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + UNCER_M + '_' + datetime.now().strftime(
+    "%y%m%d%H%M")
+print(KEYWORD)
 PATH = '../save/' + KEYWORD
 torch.manual_seed(100)
 torch.cuda.manual_seed(100)
 np.random.seed(100)
-import os
-cpu_num = 1
-os.environ ['OMP_NUM_THREADS'] = str(cpu_num)
-os.environ ['OPENBLAS_NUM_THREADS'] = str(cpu_num)
-os.environ ['MKL_NUM_THREADS'] = str(cpu_num)
-os.environ ['VECLIB_MAXIMUM_THREADS'] = str(cpu_num)
-os.environ ['NUMEXPR_NUM_THREADS'] = str(cpu_num)
-torch.set_num_threads(cpu_num)
 ########################################################### 
-GPU = sys.argv[-1] if len(sys.argv) == 2 else '0'
+GPU = '0'
 device = torch.device("cuda:{}".format(GPU)) if torch.cuda.is_available() else torch.device("cpu")
-###########################################################
-df = pd.read_hdf(FLOWPATH)
-data = df.values
-scaler = StandardScaler()
-data = scaler.fit_transform(data)
-print('data.shape', data.shape)     # [timestamp, sensors]
 ##############################################################
 def main():
     if not os.path.exists(PATH):
@@ -259,19 +263,50 @@ def main():
     shutil.copy2('Param.py', PATH)
     shutil.copy2('Param_GMAN.py', PATH)
 
+    if DATANAME == 'PEMS04':
+        df = np.squeeze(pd.read_csv(FLOWPATH, index_col=[0]))
+        data = df.values
+    elif DATANAME == 'PEMS08':
+        df = np.squeeze(pd.read_csv(FLOWPATH, index_col=[0]))
+        data = df.values
+    elif DATANAME == 'PEMS03':
+        df = np.squeeze(pd.read_csv(FLOWPATH, index_col=[0]))
+        data = df.values
+    elif DATANAME == 'PEMS07':
+        df = np.squeeze(pd.read_csv(FLOWPATH, index_col=[0]))
+        data = df.values
+    elif DATANAME == 'METR-LA':
+        df = pd.read_hdf(FLOWPATH)
+        data = df.values
+    elif DATANAME == 'PEMS-BAY':
+        df = pd.read_hdf(FLOWPATH)
+        data = df.values
+    elif DATANAME == 'PEMSD7M':
+        df = pd.read_csv(FLOWPATH,index_col=[0])
+        data = df.values
+    print('data.shape', data.shape)
+
+    trainx, trainy = getXSYS(data, 'TRAIN')
+    # transform
+    mean = trainx.mean()
+    std = trainy.std()
+    scaler = {'mean': mean, 'std': std}
+    data = Utils.transform(data, scaler['mean'], scaler['std'])
+
+
     print(KEYWORD, 'training started', time.ctime())
     trainXS, trainYS = getXSYS(data, 'TRAIN')
     print('TRAIN XS.shape YS.shape', trainXS.shape, trainYS.shape)
     trainTE = getTE(df, "TRAIN")
     print('TRAIN TE.shape', trainTE.shape)
-    trainModel(MODELNAME, "train", trainXS, trainTE, trainYS, device)
+    trainModel(MODELNAME, "train", trainXS, trainTE, trainYS, device, scaler, SEPATH)
 
     print(KEYWORD, 'testing started', time.ctime())
     testXS, testYS = getXSYS(data, 'TEST')
     print('TEST XS.shape YS.shape', testXS.shape, testYS.shape)
     testTE = getTE(df, "TEST")
     print('TEST TE.shape', testTE.shape)
-    testModel(MODELNAME, "test", testXS, testTE, testYS, device)
+    testModel(MODELNAME, "test", testXS, testTE, testYS, device, scaler, SEPATH)
 
 if __name__ == '__main__':
     main()
