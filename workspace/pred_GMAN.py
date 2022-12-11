@@ -220,8 +220,7 @@ def V1_calModel(name, mode, XS, TE, YS, scaler,cal_q, SEPATH):
     cal_data = torch.utils.data.TensorDataset(XS_torch, TE_torch, YS_torch)
     cal_iter = torch.utils.data.DataLoader(cal_data, BATCHSIZE, shuffle=False)
     model = getModel(name, device, SEPATH)
-    #model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
-    model.load_state_dict(torch.load('/home/wuying/CODE/mymodel/2022/DL-Traff-Graph/results/表格的结果/pred_PEMS04_GMAN_quantile_conformal_2210270508/GMAN.pt'))
+    model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
 
     YS_pred = predictModel(model, cal_iter)
     YS_pred_0 = YS_pred[..., 0]
@@ -281,8 +280,7 @@ def V2_calModel(name, mode, XS,  TE, YS,  scaler, lambda_list, SEPATH):
     cal_data = torch.utils.data.TensorDataset(XS_torch, TE_torch, YS_torch)
     cal_iter = torch.utils.data.DataLoader(cal_data, BATCHSIZE, shuffle=False)
     model = getModel(name, device, SEPATH)
-    #model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
-    model.load_state_dict(torch.load('/home/wuying/CODE/mymodel/2022/DL-Traff-Graph/results/表格的结果/pred_PEMS04_GMAN_quantile_conformal_2210270508/GMAN.pt'))
+    model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
 
     YS_pred = predictModel(model, cal_iter)
     YS_pred_0 = YS_pred[..., 0]
@@ -421,8 +419,7 @@ def ftestunModel_1(name, mode, XS, TE, YS, scaler, SEPATH):
     test_data = torch.utils.data.TensorDataset(XS_torch, TE_torch, YS_torch)
     test_iter = torch.utils.data.DataLoader(test_data, BATCHSIZE, shuffle=False)
     model = getModel(name, device, SEPATH)
-    #model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
-    model.load_state_dict(torch.load('/home/wuying/CODE/mymodel/2022/DL-Traff-Graph/results/表格的结果/pred_PEMS04_GMAN_quantile_conformal_2210270508/GMAN.pt'))
+    model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
 
     YS, YS_pred_0, YS_pred_1 = np.squeeze(YS), np.squeeze(predictModel(model, test_iter)[...,0]), \
                                np.squeeze(predictModel(model, test_iter)[...,1])
@@ -465,8 +462,7 @@ def ftestunModel_2(name, mode, XS, TE, YS, err, scaler, cal_list, SEPATH):
     test_data = torch.utils.data.TensorDataset(XS_torch, TE_torch, YS_torch)
     test_iter = torch.utils.data.DataLoader(test_data, BATCHSIZE, shuffle=False)
     model = getModel(name, device, SEPATH)
-    #model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
-    model.load_state_dict(torch.load('/home/wuying/CODE/mymodel/2022/DL-Traff-Graph/results/表格的结果/pred_PEMS04_GMAN_quantile_conformal_2210270508/GMAN.pt'))
+    model.load_state_dict(torch.load(PATH + '/' + name + '.pt'))
 
     YS, YS_pred_0, YS_pred_1 = np.squeeze(YS), np.squeeze(predictModel(model, test_iter)[...,0]), \
                                np.squeeze(predictModel(model, test_iter)[...,1])
@@ -524,9 +520,9 @@ SEPATH = config_data['SEPATH']
 UNCER_M = args.uncer_m
 q = args.q
 if UNCER_M == 'quantile':
-    quantiles_list = [0.05, 0.95]
+    quantiles_list = [1-q, q]
 elif UNCER_M == 'quantile_conformal':
-    quantiles_list = [0.15, 0.85]
+    quantiles_list = [1-q, q]
 elif UNCER_M == 'adaptive':
     quantiles_list = [1-q, q]
 
@@ -597,11 +593,11 @@ def main():
     data = Utils.transform(data, scaler['mean'], scaler['std'])
 
 # # for training
-    # trainXS, trainYS = getXSYS(data, 'TRAIN')
-    # print('TRAIN XS.shape YS.shape', trainXS.shape, trainYS.shape)
-    # trainTE = getTE(df, "TRAIN")
-    # print('TRAIN TE.shape', trainTE.shape)
-    # trainModel(MODELNAME, "train", trainXS, trainTE, trainYS, device, quantiles_list, scaler, SEPATH)
+    trainXS, trainYS = getXSYS(data, 'TRAIN')
+    print('TRAIN XS.shape YS.shape', trainXS.shape, trainYS.shape)
+    trainTE = getTE(df, "TRAIN")
+    print('TRAIN TE.shape', trainTE.shape)
+    trainModel(MODELNAME, "train", trainXS, trainTE, trainYS, device, quantiles_list, scaler, SEPATH)
 
     if UNCER_M == 'quantile':
         # for quantile test
