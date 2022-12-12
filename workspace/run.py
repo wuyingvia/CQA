@@ -32,7 +32,7 @@ if __name__ == "__main__":
             for method in method_list:
                 for q in quantile_list:
 
-                    p = mp.Process(target=run, args=(model, dataset, method, job_count % 8))
+                    p = mp.Process(target=run, args=(model, dataset, method, job_count % 4))
                     p.start()
                     process_list.append(p)
 
