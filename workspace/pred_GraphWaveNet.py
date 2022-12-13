@@ -199,7 +199,7 @@ def trainModel(name, mode, XS, YS, quantiles_list, scaler):
     print("%s, %s, Torch MSE, %.10e\n" % (name, mode, torch_score))
     print('Model Training Ended ...', time.ctime())
 
-def V1_calModel(name, mode, XS, YS, scaler,cal_q):
+def V1_calModel(name, mode, XS, YS, scaler,cal_q, q):
     print("model fixed calibration state:")
     print('TIMESTEP_IN, TIMESTEP_OUT', TIMESTEP_IN, TIMESTEP_OUT)
     print('MODEL CALIBRATION STATE:')
@@ -250,10 +250,10 @@ def V1_calModel(name, mode, XS, YS, scaler,cal_q):
         m_coverage = np.sum(independent_coverage.astype(float))/np.sum(mask)
         independent_coverage_l.append(m_coverage)
     m_coverage = np.stack(independent_coverage_l)
-    index = np.argmin(np.abs(m_coverage - 0.90))
+    index = np.argmin(np.abs(m_coverage - q))
     return  [err[0][index], err[1][index]]
 
-def V2_calModel(name, mode, XS, YS,  scaler, lambda_list):
+def V2_calModel(name, mode, XS, YS,  scaler, lambda_list, q):
     '''
     this version is to compute our methods
     '''
@@ -529,8 +529,7 @@ elif UNCER_M == 'quantile_conformal':
 elif UNCER_M == 'adaptive':
     quantiles_list = [1-q, q]
 
-
-KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + UNCER_M + '_' + datetime.now().strftime(
+KEYWORD = 'pred_' + DATANAME + '_' + MODELNAME + '_' + UNCER_M + '_' + str(q) + '_'+ datetime.now().strftime(
     "%y%m%d%H%M")
 print(KEYWORD)
 PATH = '../save/' + KEYWORD
@@ -593,20 +592,20 @@ def main():
         print(KEYWORD, 'testing started', time.ctime())
         testXS, testYS = getXSYS(data, 'TEST')
         print('TEST XS.shape, YS.shape', testXS.shape, testYS.shape)
-        ftestunModel_1(MODELNAME, 'test', testXS, testYS, scaler)
+        ftestunModel_1(MODELNAME, 'test', testXS, testYS, scaler, q)
         print(KEYWORD, 'testing ended')
     elif UNCER_M == 'quantile_conformal':
         # for quantile conformal calibration
         print('cal started', time.ctime())
         calXS, calYS = getXSYS(data, 'CAL')
         print('CAl XS.shape YS,shape', calXS.shape, calYS.shape)
-        err = V1_calModel(MODELNAME, 'cal', calXS, calYS, scaler, cal_list)
+        err = V1_calModel(MODELNAME, 'cal', calXS, calYS, scaler, cal_list, q)
         print(KEYWORD, 'cal ended', time.ctime())
         # for quantile conformal test
         print(KEYWORD, 'testing started', time.ctime())
         testXS, testYS = getXSYS(data, 'TEST')
         print('TEST XS.shape, YS.shape', testXS.shape, testYS.shape)
-        ftestunModel_2(MODELNAME, 'test', testXS, testYS, quantiles_list, err, scaler,cal_list)
+        ftestunModel_2(MODELNAME, 'test', testXS, testYS, quantiles_list, err, scaler, cal_list)
         print(KEYWORD, 'testing ended', time.ctime())
 
     elif UNCER_M == 'adaptive':
@@ -614,7 +613,7 @@ def main():
         print(KEYWORD, 'cal started', time.ctime())
         calXS, calYS = getXSYS(data, 'CAL')
         print('CAl XS.shape YS,shape', calXS.shape, calYS.shape)
-        err = V2_calModel(MODELNAME, 'cal', calXS, calYS, scaler, lambda_list)
+        err = V2_calModel(MODELNAME, 'cal', calXS, calYS, scaler, lambda_list, q)
         print(KEYWORD, 'cal ended', time.ctime())
         # for our method test
         print(KEYWORD, 'testing started', time.ctime())

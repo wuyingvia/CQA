@@ -13,14 +13,15 @@ def run(model, dataset, method, cuda_idx):
 if __name__ == "__main__":
 
     
-    model_list = ['pred_STGCN12.py','pred_LSTNet12.py', 'pred_GraphWaveNet.py', 'pred_MTGNN.py', 'pred_GMAN.py']
+    #model_list = ['pred_STGCN12.py','pred_LSTNet12.py', 'pred_GraphWaveNet.py', 'pred_MTGNN.py', 'pred_GMAN.py']
+    model_list = ['pred_GraphWaveNet.py']
 
-    dataset_list = ['PEMS03.conf', 'PEMS04.conf', 'PEMS08.conf', 'PEMSBAY.conf', 'PEMSD7M.conf', 'METR-LA.conf', 'PEMS07.conf',]
+    #dataset_list = ['PEMS03.conf', 'PEMS04.conf', 'PEMS08.conf', 'PEMSBAY.conf', 'PEMSD7M.conf', 'METR-LA.conf', 'PEMS07.conf',]
+    dataset_list = ['PEMS03.conf', 'METR-LA.conf']
 
     method_list = ['quantile_conformal', 'quantile', 'adaptive']
 
     quantile_list = [0.5, 0.6, 0.7, 0.8, 0.95]
-
 
 
     limit = len(dataset_list)
@@ -32,7 +33,7 @@ if __name__ == "__main__":
             for method in method_list:
                 for q in quantile_list:
 
-                    p = mp.Process(target=run, args=(model, dataset, method, job_count % 4))
+                    p = mp.Process(target=run, args=(model, dataset, method, job_count % 8))
                     p.start()
                     process_list.append(p)
 
